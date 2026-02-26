@@ -205,8 +205,8 @@ const LiveDemo = () => {
                     </button>
                   </div>
                   <div className="glass-card p-6 max-h-[500px] overflow-y-auto">
-                    <div className="prose prose-invert prose-sm max-w-none whitespace-pre-wrap text-foreground/90 leading-relaxed text-sm">
-                      {result}
+                    <div className="prose prose-invert prose-sm max-w-none text-foreground/90 leading-relaxed text-sm [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-3 [&_h1]:text-foreground [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mb-2 [&_h2]:mt-4 [&_h2]:text-foreground [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mb-2 [&_h3]:mt-3 [&_h3]:text-foreground [&_p]:mb-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-3 [&_li]:mb-1 [&_strong]:text-foreground [&_blockquote]:border-l-2 [&_blockquote]:border-primary/50 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-muted-foreground">
+                      <ReactMarkdown>{result}</ReactMarkdown>
                     </div>
                   </div>
                 </motion.div>
