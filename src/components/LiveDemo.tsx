@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, Loader2, Copy, Check } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 
 const WEBHOOK_URL = "https://n8n.srv1324748.hstgr.cloud/webhook-test/4a5295e0-b881-4696-8b06-00c97eb12c7a";
 
