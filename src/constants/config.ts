@@ -1,7 +1,7 @@
 // API Configuration
 export const API_CONFIG = {
   WEBHOOK_URL: import.meta.env.VITE_WEBHOOK_URL,
-  REQUEST_TIMEOUT: 30000, // 30 seconds
+  REQUEST_TIMEOUT: 120000, // 120 seconds - n8n AI workflows can take time
 } as const;
 
 // Toast Configuration

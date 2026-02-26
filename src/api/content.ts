@@ -50,8 +50,8 @@ class ApiClient {
       if (error instanceof Error && error.name === "AbortError") {
         throw new NetworkError("Request timed out. Please try again.");
       }
-      if (error instanceof TypeError && error.message.includes("fetch")) {
-        throw new NetworkError();
+      if (error instanceof TypeError) {
+        throw new NetworkError("Unable to reach the server. This may be a CORS or network issue.");
       }
       throw error;
     } finally {
@@ -83,18 +83,25 @@ export const contentApi = {
   async generateContent(
     request: ContentGenerationRequest
   ): Promise<string> {
+    console.log("🚀 Starting content generation...", { request });
+
     try {
       if (!API_CONFIG.WEBHOOK_URL) {
+        console.error("❌ Webhook URL not configured");
         throw new Error("Webhook URL is not configured");
       }
+
+      console.log("📡 Webhook URL:", API_CONFIG.WEBHOOK_URL);
 
       // Use AbortController for better browser compatibility
       const controller = new AbortController();
       const timeoutId = setTimeout(() => {
+        console.log("⏱️ Request timeout triggered");
         controller.abort();
       }, API_CONFIG.REQUEST_TIMEOUT);
 
       try {
+        console.log("📤 Sending request to webhook...");
         const response = await fetch(API_CONFIG.WEBHOOK_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -103,9 +110,15 @@ export const contentApi = {
         });
 
         clearTimeout(timeoutId);
+        console.log("📥 Response received:", {
+          status: response.status,
+          ok: response.ok,
+          statusText: response.statusText
+        });
 
         if (!response.ok) {
           const errorText = await response.text();
+          console.error("❌ API Error:", { status: response.status, errorText });
           throw new ApiError(
             response.status,
             `API request failed: ${response.statusText}`,
@@ -114,42 +127,75 @@ export const contentApi = {
         }
 
         const raw = await response.text();
+        console.log("📄 Raw response received:", raw.substring(0, 200) + "...");
 
         // Parse response - handle multiple formats
         let content = raw;
         try {
           const json = JSON.parse(raw);
-          if (json?.message?.content) {
-            content = json.message.content;
-          } else if (json?.content) {
-            content = json.content;
-          } else if (json?.output) {
-            content = json.output;
-          } else if (typeof json === "string") {
-            content = json;
+          console.log("✅ JSON parsed successfully:", Object.keys(json));
+
+          // Handle array response (n8n often returns array of objects)
+          const data = Array.isArray(json) ? json[0] : json;
+
+          if (data?.message?.content) {
+            content = data.message.content;
+            console.log("📝 Using data.message.content");
+          } else if (data?.content) {
+            content = data.content;
+            console.log("📝 Using data.content");
+          } else if (data?.output) {
+            content = data.output;
+            console.log("📝 Using data.output");
+          } else if (data?.text) {
+            content = data.text;
+            console.log("📝 Using data.text");
+          } else if (data?.response) {
+            content = data.response;
+            console.log("📝 Using data.response");
+          } else if (typeof data === "string") {
+            content = data;
+            console.log("📝 Using data as string");
+          } else {
+            // Fallback: stringify the object for display
+            content = typeof data === "object" ? JSON.stringify(data, null, 2) : raw;
+            console.log("📝 Using fallback format");
           }
         } catch (parseError) {
           // Not JSON, use raw text - this is fine
-          logError(new Error("Response is not JSON, using raw text"), { raw: raw.substring(0, 100) });
+          console.log("ℹ️ Response is not JSON, using raw text");
         }
 
+        console.log("✅ Content generation successful, length:", content.length);
         return content;
       } catch (fetchError) {
         clearTimeout(timeoutId);
+        console.error("❌ Fetch error:", fetchError);
 
         // Handle abort/timeout
         if (fetchError instanceof Error && fetchError.name === "AbortError") {
+          console.error("⏱️ Request timed out");
           throw new NetworkError("Request timed out. Please try again.");
+        }
+
+        // Handle ApiError - re-throw as-is
+        if (fetchError instanceof ApiError) {
+          throw fetchError;
+        }
+
+        // Any TypeError from fetch is a network/CORS issue
+        if (fetchError instanceof TypeError) {
+          console.error("🌐 Network/CORS error:", fetchError.message);
+          throw new NetworkError(
+            "Unable to reach the server. This may be a CORS or network issue."
+          );
         }
 
         // Re-throw other errors
         throw fetchError;
       }
     } catch (error) {
-      // Only convert to NetworkError if it's actually a network issue
-      if (error instanceof TypeError && error.message.includes("fetch")) {
-        throw new NetworkError("Unable to connect. Please check your internet connection.");
-      }
+      console.error("❌ Content generation error:", error);
 
       // Re-throw ApiError and NetworkError as-is
       if (error instanceof ApiError || error instanceof NetworkError) {

@@ -51,7 +51,7 @@ export const getUserFriendlyMessage = (error: unknown): string => {
   }
 
   if (error instanceof NetworkError) {
-    return "Unable to connect. Please check your internet connection.";
+    return error.message;
   }
 
   return "Something went wrong. Please try again.";

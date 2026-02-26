@@ -110,12 +110,13 @@ const LiveDemo = () => {
       const message = getUserFriendlyMessage(error);
 
       toast({
-        title: "Error",
+        title: "Generation Failed",
         description: message,
         variant: "destructive",
       });
 
-      setResult(message);
+      // Don't put error message in result - keep result empty so error only shows as toast
+      setResult("");
     } finally {
       setLoading(false);
     }
