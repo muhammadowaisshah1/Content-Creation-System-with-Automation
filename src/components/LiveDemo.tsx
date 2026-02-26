@@ -25,10 +25,27 @@ const LiveDemo = () => {
       const response = await fetch(WEBHOOK_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, platform, tone }),
+        body: JSON.stringify({ prompt: prompt.trim(), platform, tone }),
       });
-      const data = await response.text();
-      setResult(data);
+      const raw = await response.text();
+
+      // Try to extract content from OpenAI-style JSON response
+      let parsed = raw;
+      try {
+        const json = JSON.parse(raw);
+        if (json?.message?.content) {
+          parsed = json.message.content;
+        } else if (json?.content) {
+          parsed = json.content;
+        } else if (json?.output) {
+          parsed = json.output;
+        } else if (typeof json === "string") {
+          parsed = json;
+        }
+      } catch {
+        // Not JSON, use raw text as-is
+      }
+      setResult(parsed);
     } catch {
       setResult("Unable to connect to the AI workflow. Please try again later.");
     } finally {
