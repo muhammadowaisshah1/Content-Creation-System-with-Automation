@@ -88,50 +88,76 @@ export const contentApi = {
         throw new Error("Webhook URL is not configured");
       }
 
-      const response = await fetch(API_CONFIG.WEBHOOK_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(request),
-        signal: AbortSignal.timeout(API_CONFIG.REQUEST_TIMEOUT),
-      });
+      // Use AbortController for better browser compatibility
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+      }, API_CONFIG.REQUEST_TIMEOUT);
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new ApiError(
-          response.status,
-          `API request failed: ${response.statusText}`,
-          errorText
-        );
-      }
-
-      const raw = await response.text();
-
-      // Parse response - handle multiple formats
-      let content = raw;
       try {
-        const json = JSON.parse(raw);
-        if (json?.message?.content) {
-          content = json.message.content;
-        } else if (json?.content) {
-          content = json.content;
-        } else if (json?.output) {
-          content = json.output;
-        } else if (typeof json === "string") {
-          content = json;
+        const response = await fetch(API_CONFIG.WEBHOOK_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(request),
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new ApiError(
+            response.status,
+            `API request failed: ${response.statusText}`,
+            errorText
+          );
         }
-      } catch (parseError) {
-        logError(new Error("Failed to parse JSON response"), { raw });
-        // Not JSON, use raw text
+
+        const raw = await response.text();
+
+        // Parse response - handle multiple formats
+        let content = raw;
+        try {
+          const json = JSON.parse(raw);
+          if (json?.message?.content) {
+            content = json.message.content;
+          } else if (json?.content) {
+            content = json.content;
+          } else if (json?.output) {
+            content = json.output;
+          } else if (typeof json === "string") {
+            content = json;
+          }
+        } catch (parseError) {
+          // Not JSON, use raw text - this is fine
+          logError(new Error("Response is not JSON, using raw text"), { raw: raw.substring(0, 100) });
+        }
+
+        return content;
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+
+        // Handle abort/timeout
+        if (fetchError instanceof Error && fetchError.name === "AbortError") {
+          throw new NetworkError("Request timed out. Please try again.");
+        }
+
+        // Re-throw other errors
+        throw fetchError;
+      }
+    } catch (error) {
+      // Only convert to NetworkError if it's actually a network issue
+      if (error instanceof TypeError && error.message.includes("fetch")) {
+        throw new NetworkError("Unable to connect. Please check your internet connection.");
       }
 
-      return content;
-    } catch (error) {
-      if (error instanceof Error && error.name === "TimeoutError") {
-        throw new NetworkError("Request timed out. Please try again.");
+      // Re-throw ApiError and NetworkError as-is
+      if (error instanceof ApiError || error instanceof NetworkError) {
+        throw error;
       }
-      if (error instanceof TypeError && error.message.includes("fetch")) {
-        throw new NetworkError();
-      }
+
+      // Log unexpected errors
+      logError(error as Error, { context: "contentApi.generateContent" });
       throw error;
     }
   },

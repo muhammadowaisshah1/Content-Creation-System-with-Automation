@@ -127,7 +127,7 @@ const Footer = () => {
             >
               © {currentYear} Intelligent Content Flow. Developed by
               <span className="text-foreground font-semibold">Muhammad Owais Shah</span>
-              <span className="hidden sm:inline">•</span>
+              {/* <span className="hidden sm:inline">•</span>
               <span className="flex items-center gap-2">
                 Built with
                 <Heart className="w-3.5 h-3.5 text-red-500 inline animate-pulse" />
@@ -135,7 +135,7 @@ const Footer = () => {
                 <span className="text-foreground font-medium">n8n</span>
                 +
                 <span className="text-foreground font-medium">Claude AI</span>
-              </span>
+              </span> */}
             </motion.p>
 
             <motion.div
