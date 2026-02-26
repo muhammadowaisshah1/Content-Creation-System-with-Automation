@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, Loader2, Copy, Check } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 
 const WEBHOOK_URL = "https://n8n.srv1324748.hstgr.cloud/webhook-test/4a5295e0-b881-4696-8b06-00c97eb12c7a";
 
@@ -24,10 +25,27 @@ const LiveDemo = () => {
       const response = await fetch(WEBHOOK_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, platform, tone }),
+        body: JSON.stringify({ prompt: prompt.trim(), platform, tone }),
       });
-      const data = await response.text();
-      setResult(data);
+      const raw = await response.text();
+
+      // Try to extract content from OpenAI-style JSON response
+      let parsed = raw;
+      try {
+        const json = JSON.parse(raw);
+        if (json?.message?.content) {
+          parsed = json.message.content;
+        } else if (json?.content) {
+          parsed = json.content;
+        } else if (json?.output) {
+          parsed = json.output;
+        } else if (typeof json === "string") {
+          parsed = json;
+        }
+      } catch {
+        // Not JSON, use raw text as-is
+      }
+      setResult(parsed);
     } catch {
       setResult("Unable to connect to the AI workflow. Please try again later.");
     } finally {
@@ -187,8 +205,8 @@ const LiveDemo = () => {
                     </button>
                   </div>
                   <div className="glass-card p-6 max-h-[500px] overflow-y-auto">
-                    <div className="prose prose-invert prose-sm max-w-none whitespace-pre-wrap text-foreground/90 leading-relaxed text-sm">
-                      {result}
+                    <div className="prose prose-invert prose-sm max-w-none text-foreground/90 leading-relaxed text-sm [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-3 [&_h1]:text-foreground [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mb-2 [&_h2]:mt-4 [&_h2]:text-foreground [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mb-2 [&_h3]:mt-3 [&_h3]:text-foreground [&_p]:mb-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-3 [&_li]:mb-1 [&_strong]:text-foreground [&_blockquote]:border-l-2 [&_blockquote]:border-primary/50 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-muted-foreground">
+                      <ReactMarkdown>{result}</ReactMarkdown>
                     </div>
                   </div>
                 </motion.div>
